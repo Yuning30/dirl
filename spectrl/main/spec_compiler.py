@@ -1,3 +1,5 @@
+from typing import List
+
 from spectrl.main.monitor import Monitor_Automaton
 import spectrl.main.compiler_utility as cutil
 
@@ -35,7 +37,7 @@ class TaskSpec:
     def __init__(self, cons, predicate, subtasks):
         self.cons = cons
         self.predicate = predicate
-        self.subtasks = subtasks
+        self.subtasks: List[TaskSpec] = subtasks
     
     def __str__(self):
         if self.cons == Cons.ev:

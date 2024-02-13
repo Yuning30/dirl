@@ -1,3 +1,5 @@
+from typing import List
+
 import gym
 import numpy as np
 
@@ -10,7 +12,7 @@ from heapq import heappop, heappush
 
 
 class AbstractEdge:
-    '''
+    """
     Class defining an abstract edge.
     Vertices are integers from 0 to |U|.
 
@@ -18,17 +20,29 @@ class AbstractEdge:
         target: int (target vertex)
         predicate: state, resource -> float (predicate corresponding to target)
         constraints: list of constraints that needs to be maintained (one after the other)
-    '''
+    """
 
     def __init__(self, target, predicate, constraints):
         self.target = target
         self.predicate = predicate
         self.constraints = constraints
 
-    def learn_policy(self, env, hyperparams, source_vertex, init_dist=None,
-                     algo='ars', res_model=None, max_steps=100, safety_penalty=-1,
-                     neg_inf=-10, alpha=0, use_gpu=False, render=False):
-        '''
+    def learn_policy(
+        self,
+        env,
+        hyperparams,
+        source_vertex,
+        init_dist=None,
+        algo="ars",
+        res_model=None,
+        max_steps=100,
+        safety_penalty=-1,
+        neg_inf=-10,
+        alpha=0,
+        use_gpu=False,
+        render=False,
+    ):
+        """
         Learn policy for the abstract edge.
 
         Parameters:
@@ -41,30 +55,41 @@ class AbstractEdge:
 
         Returns:
             Policy object with get_action(combined_state) function.
-        '''
+        """
 
         # Step 1: Create reachability environment.
-        reach_env = ReachabilityEnv(env, init_dist, self.predicate, self.constraints,
-                                    max_steps=max_steps, res_model=res_model,
-                                    safety_penalty=safety_penalty, neg_inf=neg_inf,
-                                    alpha=alpha)
+        reach_env = ReachabilityEnv(
+            env,
+            init_dist,
+            self.predicate,
+            self.constraints,
+            max_steps=max_steps,
+            res_model=res_model,
+            safety_penalty=safety_penalty,
+            neg_inf=neg_inf,
+            alpha=alpha,
+        )
 
         # Step 2: Call the learning algorithm
-        print('\nLearning policy for edge {} -> {}\n'.format(source_vertex, self.target))
-        if self.constraints[0].__name__ == 'true_pred' and self.predicate is None:
-            policy = RandomPolicy(reach_env.action_space.shape[0], reach_env.action_space.high)
+        print(
+            "\nLearning policy for edge {} -> {}\n".format(source_vertex, self.target)
+        )
+        if self.constraints[0].__name__ == "true_pred" and self.predicate is None:
+            policy = RandomPolicy(
+                reach_env.action_space.shape[0], reach_env.action_space.high
+            )
             log_info = np.array([[0, 0, 0]])
-        elif algo == 'ars':
+        elif algo == "ars":
             nn_params = NNParams(reach_env, hyperparams.hidden_dim)
             policy = NNPolicy(nn_params)
             log_info = ars(reach_env, policy, hyperparams.ars_params)
-        elif algo == 'ddpg':
+        elif algo == "ddpg":
             agent = DDPG(hyperparams, use_gpu=use_gpu)
             agent.train(reach_env)
             policy = agent.get_policy()
             log_info = agent.rewardgraph
         else:
-            raise ValueError('Algorithm \"{}\" not supported!'.format(algo))
+            raise ValueError('Algorithm "{}" not supported!'.format(algo))
 
         # Render for debugging
         if render:
@@ -76,7 +101,7 @@ class AbstractEdge:
 
 
 class AbstractReachability:
-    '''
+    """
     Class defining the abstract reachability problem.
 
     Parameters:
@@ -84,17 +109,29 @@ class AbstractReachability:
         final_vertices: set of int (set of final vertices).
 
     Initial vertex is assumed to be 0.
-    '''
+    """
 
     def __init__(self, abstract_graph, final_vertices):
-        self.abstract_graph = abstract_graph
+        self.abstract_graph: List[List[AbstractEdge]] = abstract_graph
         self.final_vertices = final_vertices
         self.num_vertices = len(self.abstract_graph)
 
-    def learn_dijkstra_policy(self, env, hyperparams, algo='ars', res_model=None,
-                              max_steps=100, safety_penalty=-1, neg_inf=-10, alpha=0,
-                              num_samples=300, use_gpu=False, render=False, succ_thresh=0.):
-        '''
+    def learn_dijkstra_policy(
+        self,
+        env,
+        hyperparams,
+        algo="ars",
+        res_model=None,
+        max_steps=100,
+        safety_penalty=-1,
+        neg_inf=-10,
+        alpha=0,
+        num_samples=300,
+        use_gpu=False,
+        render=False,
+        succ_thresh=0.0,
+    ):
+        """
         Dijkstra's algorithm based learning for abstract reachability.
 
         Parameters:
@@ -111,7 +148,7 @@ class AbstractReachability:
             abstract_policy: list of int (edge to take for each vertex)
             nn_policies: list of list of nn policies (can be [] for unexplored vertices or
                             None for edges for which no policy was learned)
-        '''
+        """
         # Initialize abstract policy and NN policies.
         parent = [-1] * self.num_vertices
         abstract_policy = [-1] * self.num_vertices
@@ -129,12 +166,12 @@ class AbstractReachability:
         success_measure = 0  # negative log of success probability
         num_edges_learned = 0
         total_steps = 0
-        total_time = 0.
+        total_time = 0.0
 
         # Set of bad edges for which RL fails to learn a policy
         bad_edges = []
         incomplete = True
-        best_success = 0.
+        best_success = 0.0
 
         while not reached_final_vertex:
             if len(queue) == 0:
@@ -159,12 +196,25 @@ class AbstractReachability:
                         if vertex == 0:
                             start_dist = None
                         else:
-                            start_dist = FiniteDistribution(reach_states[(source, vertex)])
+                            start_dist = FiniteDistribution(
+                                reach_states[(source, vertex)]
+                            )
 
                         # Learn policy
                         edge_policy, reach_env, log_info = edge.learn_policy(
-                            env, hyperparams, vertex, start_dist, algo, res_model,
-                            max_steps, safety_penalty, neg_inf, alpha, use_gpu, render)
+                            env,
+                            hyperparams,
+                            vertex,
+                            start_dist,
+                            algo,
+                            res_model,
+                            max_steps,
+                            safety_penalty,
+                            neg_inf,
+                            alpha,
+                            use_gpu,
+                            render,
+                        )
                         nn_policies[vertex].append(edge_policy)
 
                         # update stats
@@ -177,26 +227,34 @@ class AbstractReachability:
                         reach_prob = 0
                         for _ in range(num_samples):
                             sarss = get_rollout(reach_env, edge_policy, False)
-                            states = np.array([state for state, _, _, _ in sarss] + [sarss[-1][-1]])
+                            states = np.array(
+                                [state for state, _, _, _ in sarss] + [sarss[-1][-1]]
+                            )
                             total_steps += len(sarss)
                             if reach_env.cum_reward(states) > 0:
                                 reach_prob += 1
                                 if edge.target != vertex:
                                     states_reached.append(reach_env.get_state())
-                        reach_prob = (reach_prob / num_samples)
-                        print('\nReach Probability: {}'.format(reach_prob))
+                        reach_prob = reach_prob / num_samples
+                        print("\nReach Probability: {}".format(reach_prob))
                         if edge.target != vertex:
                             if len(states_reached) > 0:
                                 reach_states[(vertex, edge.target)] = states_reached
-                                target_neg_log_prob = -np.log(reach_prob) + min_neg_log_prob[vertex]
-                                heappush(queue, (target_neg_log_prob, edge.target, vertex))
+                                target_neg_log_prob = (
+                                    -np.log(reach_prob) + min_neg_log_prob[vertex]
+                                )
+                                heappush(
+                                    queue, (target_neg_log_prob, edge.target, vertex)
+                                )
                             else:
                                 bad_edges.append((vertex, edge.target))
                         else:
-                            success_measure = -np.log(reach_prob) + min_neg_log_prob[vertex]
+                            success_measure = (
+                                -np.log(reach_prob) + min_neg_log_prob[vertex]
+                            )
                             success_measure = np.exp(-success_measure)
                             incomplete = False
-                            print('Estimated Success Rate: {}'.format(success_measure))
+                            print("Estimated Success Rate: {}".format(success_measure))
 
                 # Set the explored tag
                 explored[vertex] = True
@@ -220,24 +278,31 @@ class AbstractReachability:
 
         # Print bad edges
         if len(bad_edges) > 0:
-            print('\nBad Edges:')
+            print("\nBad Edges:")
             for s, t in bad_edges:
-                print('{} -> {}'.format(s, t))
+                print("{} -> {}".format(s, t))
             if incomplete:
                 exit(1)
 
-        return abstract_policy, nn_policies, [total_steps, total_time, num_edges_learned]
+        return (
+            abstract_policy,
+            nn_policies,
+            [total_steps, total_time, num_edges_learned],
+        )
 
     def pretty_print(self):
         for i in range(self.num_vertices):
-            targets = ''
+            targets = ""
             for edge in self.abstract_graph[i]:
-                targets += ' ' + str(edge.target)
-            print(str(i) + ' ->' + targets)
+                targets += " " + str(edge.target)
+            print(str(i) + " ->" + targets)
+    
+    def plot(self):
+
 
 
 class ReachabilityEnv(gym.Env):
-    '''
+    """
     Product of system and resource model.
     Terminates upon reaching a goal predicate (if specified).
 
@@ -251,11 +316,20 @@ class ReachabilityEnv(gym.Env):
         safety_penalty: float (min penalty for violating constraints)
         neg_inf: float (negative reward for failing to satisfy constraints)
         alpha: float (alpha * original_reward will be added to reward)
-    '''
+    """
 
-    def __init__(self, env, init_dist=None, final_pred=None, constraints=[],
-                 max_steps=100, res_model=None, safety_penalty=-1, neg_inf=-10,
-                 alpha=0):
+    def __init__(
+        self,
+        env,
+        init_dist=None,
+        final_pred=None,
+        constraints=[],
+        max_steps=100,
+        res_model=None,
+        safety_penalty=-1,
+        neg_inf=-10,
+        alpha=0,
+    ):
         self.wrapped_env = env
         self.init_dist = init_dist
         self.final_pred = final_pred
@@ -271,9 +345,13 @@ class ReachabilityEnv(gym.Env):
 
         # Dummy resource model
         if res_model is None:
+
             def delta(sys_state, res_state, sys_action):
                 return np.array([])
-            res_model = Resource_Model(self.orig_state_dim, self.action_dim, 0, np.array([]), delta)
+
+            res_model = Resource_Model(
+                self.orig_state_dim, self.action_dim, 0, np.array([]), delta
+            )
         self.res_model = res_model
 
         obs_dim = self.orig_state_dim + self.res_model.res_init.shape[0]
@@ -296,22 +374,29 @@ class ReachabilityEnv(gym.Env):
         return self.get_obs()
 
     def step(self, action):
-        self.res_state = self.res_model.res_delta(self.sys_state, self.res_state, action)
+        self.res_state = self.res_model.res_delta(
+            self.sys_state, self.res_state, action
+        )
         self.sys_state, r, _, _ = self.wrapped_env.step(action)
         self.t += 1
 
         reward = self.reward()
         reward = reward + self.alpha * min(r, 0)
         done = self.t > self.max_steps
-        if (self.final_pred is not None) and (self.violated_constraints < len(self.constraints)):
+        if (self.final_pred is not None) and (
+            self.violated_constraints < len(self.constraints)
+        ):
             done = done or self.final_pred(self.sys_state, self.res_state) > 0
 
         return self.get_obs(), reward, done, {}
 
     def render(self):
         self.wrapped_env.render()
-        print('System State: {} | Resource State: {}'.format(
-            self.sys_state.tolist(), self.res_state.tolist()))
+        print(
+            "System State: {} | Resource State: {}".format(
+                self.sys_state.tolist(), self.res_state.tolist()
+            )
+        )
 
     def get_obs(self):
         return np.concatenate([self.sys_state, self.res_state])
@@ -346,8 +431,8 @@ class ReachabilityEnv(gym.Env):
         safety_reward = -self.neg_inf
         violated_constraints = 0
         for s in states:
-            sys_state = s[:self.orig_state_dim]
-            res_state = s[self.orig_state_dim:]
+            sys_state = s[: self.orig_state_dim]
+            res_state = s[self.orig_state_dim :]
             if self.final_pred is not None:
                 reach_reward = max(reach_reward, self.final_pred(sys_state, res_state))
 
@@ -369,7 +454,7 @@ class ReachabilityEnv(gym.Env):
 
 
 class ConstrainedEnv(ReachabilityEnv):
-    '''
+    """
     Environment for the full tasks enforcing constraints on the chosen abstract path.
 
     Parameters:
@@ -379,15 +464,17 @@ class ConstrainedEnv(ReachabilityEnv):
         abstract_policy: list of int (edge to choose in each abstract state)
         res_model: Resource_Model (optional, can be None)
         max_steps: int
-    '''
+    """
 
-    def __init__(self, env, abstract_reach, abstract_policy,
-                 res_model=None, max_steps=100):
+    def __init__(
+        self, env, abstract_reach, abstract_policy, res_model=None, max_steps=100
+    ):
         self.abstract_graph = abstract_reach.abstract_graph
         self.final_vertices = abstract_reach.final_vertices
         self.abstract_policy = abstract_policy
-        super(ConstrainedEnv, self).__init__(env, max_steps=max_steps,
-                                             res_model=res_model)
+        super(ConstrainedEnv, self).__init__(
+            env, max_steps=max_steps, res_model=res_model
+        )
 
     def reset(self):
         obs = super(ConstrainedEnv, self).reset()
@@ -405,7 +492,9 @@ class ConstrainedEnv(ReachabilityEnv):
         if self.edge.predicate is not None:
             if self.edge.predicate(self.sys_state, self.res_state) > 0:
                 self.vertex = self.edge.target
-                self.edge = self.abstract_graph[self.vertex][self.abstract_policy[self.vertex]]
+                self.edge = self.abstract_graph[self.vertex][
+                    self.abstract_policy[self.vertex]
+                ]
                 self.blocked_constraints = 0
 
         self.update_blocked_constraints()
@@ -435,13 +524,17 @@ class HierarchicalPolicy:
         self.sys_dim = sys_dim
 
     def get_action(self, state):
-        sys_state = state[:self.sys_dim]
-        res_state = state[self.sys_dim:]
+        sys_state = state[: self.sys_dim]
+        res_state = state[self.sys_dim :]
         if self.edge.predicate is not None:
             if self.edge.predicate(sys_state, res_state) > 0:
                 self.vertex = self.edge.target
-                self.edge = self.abstract_graph[self.vertex][self.abstract_policy[self.vertex]]
-        return self.nn_policies[self.vertex][self.abstract_policy[self.vertex]].get_action(state)
+                self.edge = self.abstract_graph[self.vertex][
+                    self.abstract_policy[self.vertex]
+                ]
+        return self.nn_policies[self.vertex][
+            self.abstract_policy[self.vertex]
+        ].get_action(state)
 
     def reset(self):
         self.vertex = 0

@@ -3,7 +3,7 @@ Constructing task automaton and abstract reachability graph from spec.
 """
 
 from copy import copy
-from spectrl.main.spec_compiler import Cons, land
+from spectrl.main.spec_compiler import Cons, land, TaskSpec
 from spectrl.hierarchy.reachability import AbstractEdge, AbstractReachability
 
 
@@ -25,7 +25,7 @@ class TaskAutomaton:
         self.num_states = len(self.delta)
 
 
-def automaton_graph_from_spec(spec):
+def automaton_graph_from_spec(spec: TaskSpec):
     """
     Constructs task automaton and abstract reachability graph from the specification.
 
@@ -168,7 +168,66 @@ def automaton_graph_from_spec(spec):
         abstract_reach = AbstractReachability(abstract_graph, final_vertices)
 
     elif spec.cons == Cons.repeat:
-        pass
+        automaton = None
+        if spec.subtasks[0].cons == Cons.ev:
+            abstract_graph = automaton_graph_from_spec(spec.subtasks[0])
+        elif spec.subtasks[0].cons == Cons.alw:
+            _, r = automaton_graph_from_spec(spec.subtasks[0])
+
+            neighbor_of_initial = [e.target for e in r.abstract_graph[0]]
+            # add an edge from every final vertex to every neighbor of the initial vertex
+            for final_vertex in r.final_vertices:
+                for neighbor in neighbor_of_initial:
+                    r.abstract_graph[final_vertex].append(
+                        AbstractEdge(neighbor, None, [true_pred])
+                    )
+
+            # add the constraint
+            abstract_graph = []
+            for edges in r.abstract_graph:
+                new_edges = []
+                for edge in edges:
+                    if edge.predicate is not None:
+                        new_predicate = land(edge.predicate, spec.predicate)
+                    else:
+                        new_predicate = None
+                    new_constraints = [
+                        land(b, spec.predicate) for b in edge.constraints
+                    ]
+                    new_edges.append(
+                        AbstractEdge(edge.target, new_predicate, new_constraints)
+                    )
+                abstract_graph.append(new_edges)
+            abstract_reach = AbstractReachability(
+                abstract_graph, set(r.final_vertices)
+            )
+        elif spec.subtasks[0].cons == Cons.seq:
+            _, r = automaton_graph_from_spec(spec.subtasks[0])
+            neighbor_of_initial = [e.target for e in r.abstract_graph[0]]
+            # add an edge from every final vertex to every neighbor of the initial vertex
+            for final_vertex in r.final_vertices:
+                for neighbor in neighbor_of_initial:
+                    r.abstract_graph[final_vertex].append(
+                        AbstractEdge(neighbor, None, [true_pred])
+                    )
+
+            abstract_reach = r
+        elif spec.subtasks[0].cons == Cons.choose:
+            _, r = automaton_graph_from_spec(spec.subtasks[0])
+            neighbor_of_initial = [e.target for e in r.abstract_graph[0]]
+            # add an edge from every final vertex to every neighbor of the initial vertex
+            for final_vertex in r.final_vertices:
+                for neighbor in neighbor_of_initial:
+                    r.abstract_graph[final_vertex].append(
+                        AbstractEdge(neighbor, None, [true_pred])
+                    )
+
+            abstract_reach = r
+        elif spec.subtasks[0].cons == Cons.repeat:
+            # ignore repeat over repeat
+            abstract_graph = automaton_graph_from_spec(spec.subtasks[0])
+        else:
+            assert False
 
     return automaton, abstract_reach
 
