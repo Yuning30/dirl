@@ -1,13 +1,14 @@
-'''
+"""
 Constructing task automaton and abstract reachability graph from spec.
-'''
+"""
+
 from copy import copy
 from spectrl.main.spec_compiler import Cons, land
 from spectrl.hierarchy.reachability import AbstractEdge, AbstractReachability
 
 
 class TaskAutomaton:
-    '''
+    """
     Task Automaton without registers.
 
     Parameters:
@@ -16,7 +17,7 @@ class TaskAutomaton:
         final_states: set of int (final monitor states).
 
     Initial state is assumed to be 0.
-    '''
+    """
 
     def __init__(self, delta, final_states):
         self.delta = delta
@@ -25,7 +26,7 @@ class TaskAutomaton:
 
 
 def automaton_graph_from_spec(spec):
-    '''
+    """
     Constructs task automaton and abstract reachability graph from the specification.
 
     Parameters:
@@ -33,7 +34,7 @@ def automaton_graph_from_spec(spec):
 
     Returns:
         (automaton, abstract_reach): TaskAutomaton * AbstractReachability
-    '''
+    """
     if spec.cons == Cons.ev:
         # Case 1: Objectives
 
@@ -42,8 +43,10 @@ def automaton_graph_from_spec(spec):
         automaton = TaskAutomaton(delta, set([1]))
 
         # Step 1b: Construct abstract graph
-        abstract_graph = [[AbstractEdge(1, spec.predicate, [true_pred])],
-                          [AbstractEdge(1, None, [true_pred])]]
+        abstract_graph = [
+            [AbstractEdge(1, spec.predicate, [true_pred])],
+            [AbstractEdge(1, None, [true_pred])],
+        ]
         abstract_reach = AbstractReachability(abstract_graph, set([1]))
 
     elif spec.cons == Cons.alw:
@@ -66,7 +69,9 @@ def automaton_graph_from_spec(spec):
                 else:
                     new_predicate = None
                 new_constraints = [land(b, spec.predicate) for b in edge.constraints]
-                new_edges.append(AbstractEdge(edge.target, new_predicate, new_constraints))
+                new_edges.append(
+                    AbstractEdge(edge.target, new_predicate, new_constraints)
+                )
             abstract_graph.append(new_edges)
         abstract_reach = AbstractReachability(abstract_graph, set(r1.final_vertices))
 
@@ -86,7 +91,9 @@ def automaton_graph_from_spec(spec):
             for t, b in a2.delta[0]:
                 delta[s].append((t + a1.num_states, b))
 
-        automaton = TaskAutomaton(delta, set([t + a1.num_states for t in a2.final_states]))
+        automaton = TaskAutomaton(
+            delta, set([t + a1.num_states for t in a2.final_states])
+        )
 
         # Step 3c: Construct abstract graph
         abstract_graph = [[copy_edge(e) for e in edges] for edges in r1.abstract_graph]
@@ -95,7 +102,9 @@ def automaton_graph_from_spec(spec):
             new_edges = []
             for e in edges:
                 new_target = e.target + r1.num_vertices - 1
-                new_edges.append(AbstractEdge(new_target, e.predicate, copy(e.constraints)))
+                new_edges.append(
+                    AbstractEdge(new_target, e.predicate, copy(e.constraints))
+                )
             abstract_graph.append(new_edges)
 
         for v in r1.final_vertices:
@@ -103,7 +112,9 @@ def automaton_graph_from_spec(spec):
             for e in r2.abstract_graph[0]:
                 new_target = e.target + r1.num_vertices - 1
                 new_constraints = r1.abstract_graph[v][0].constraints + e.constraints
-                abstract_graph[v].append(AbstractEdge(new_target, e.predicate, new_constraints))
+                abstract_graph[v].append(
+                    AbstractEdge(new_target, e.predicate, new_constraints)
+                )
 
         final_vertices = set([t + r1.num_vertices - 1 for t in r2.final_vertices])
         abstract_reach = AbstractReachability(abstract_graph, final_vertices)
@@ -134,7 +145,9 @@ def automaton_graph_from_spec(spec):
             abstract_graph[0].append(copy_edge(e))
         for e in r2.abstract_graph[0]:
             new_target = e.target + r1.num_vertices - 1
-            abstract_graph[0].append(AbstractEdge(new_target, e.predicate, copy(e.constraints)))
+            abstract_graph[0].append(
+                AbstractEdge(new_target, e.predicate, copy(e.constraints))
+            )
 
         for edges in r1.abstract_graph[1:]:
             new_edges = [copy_edge(e) for e in edges]
@@ -144,12 +157,18 @@ def automaton_graph_from_spec(spec):
             new_edges = []
             for e in edges:
                 new_target = e.target + r1.num_vertices - 1
-                new_edges.append(AbstractEdge(new_target, e.predicate, copy(e.constraints)))
+                new_edges.append(
+                    AbstractEdge(new_target, e.predicate, copy(e.constraints))
+                )
             abstract_graph.append(new_edges)
 
-        final_vertices = r1.final_vertices.union(set(
-            [t + r1.num_vertices - 1 for t in r2.final_vertices]))
+        final_vertices = r1.final_vertices.union(
+            set([t + r1.num_vertices - 1 for t in r2.final_vertices])
+        )
         abstract_reach = AbstractReachability(abstract_graph, final_vertices)
+
+    elif spec.cons == Cons.repeat:
+        pass
 
     return automaton, abstract_reach
 

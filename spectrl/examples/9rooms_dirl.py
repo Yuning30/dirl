@@ -1,6 +1,6 @@
 from spectrl.hierarchy.construction import automaton_graph_from_spec
 from spectrl.hierarchy.reachability import HierarchicalPolicy, ConstrainedEnv
-from spectrl.main.spec_compiler import ev, seq, choose, alw
+from spectrl.main.spec_compiler import ev, seq, choose, alw, repeat
 from spectrl.util.io import parse_command_line_options, save_log_info
 from spectrl.util.rl import print_performance, get_rollout
 from spectrl.rl.ars import HyperParams
