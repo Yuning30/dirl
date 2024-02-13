@@ -41,9 +41,9 @@ class TaskSpec:
     
     def __str__(self):
         if self.cons == Cons.ev:
-            return f"achieving ({str(self.subtasks[0])})"
+            return f"b"
         elif self.cons == Cons.alw:
-            return f"{str(self.subtasks[0])} ensuring {str(self.predicate)}"
+            return f"{str(self.subtasks[0])} ensuring predicate"
         elif self.cons == Cons.seq:
             return f"{str(self.subtasks[0])} ;; {str(self.subtasks[1])}"
         elif self.cons == Cons.choose:

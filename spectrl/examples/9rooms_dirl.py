@@ -9,6 +9,7 @@ from spectrl.examples.rooms_envs import GRID_PARAMS_LIST, MAX_TIMESTEPS, START_R
 from spectrl.envs.rooms import RoomsEnv
 
 import os
+import copy
 
 num_iters = [50, 100, 200, 300, 400, 500]
 
@@ -68,10 +69,25 @@ if __name__ == '__main__':
 
         specs = [spec0, spec1, spec2, spec3, spec4, spec5, spec6, spec7]
 
+        spec8 = copy.deepcopy(spec5)
+        spec8 = repeat(spec8)
+
+        spec9 = seq(spec8, spec8)
+
+        spec10 = seq(alw(grid_params.avoid_center((1, 0)), ev(grid_params.in_room(topleft))), alw(grid_params.avoid_center((2, 0)), ev(grid_params.in_room(topleft))))
         # Step 3: construct abstract reachability graph
-        _, abstract_reach = automaton_graph_from_spec(specs[spec_num])
+        
+        spec11 = repeat(spec3)
+        import pdb
+        pdb.set_trace()
+        spec9.__str__()
+        _, abstract_reach = automaton_graph_from_spec(spec11)
         print('\n**** Abstract Graph ****')
         abstract_reach.pretty_print()
+        abstract_reach.plot()
+        # exit()
+        import pdb
+        pdb.set_trace()
 
         # Step 5: Learn policy
         abstract_policy, nn_policies, stats = abstract_reach.learn_dijkstra_policy(

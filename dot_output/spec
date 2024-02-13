@@ -1,0 +1,8 @@
+digraph spec {
+	0 [shape=circle]
+	1 [shape=circle]
+	2 [shape=doublecircle]
+	0 -> 1
+	1 -> 2
+	2 -> 1
+}

@@ -35,17 +35,14 @@ def automaton_graph_from_spec(spec: TaskSpec):
     Returns:
         (automaton, abstract_reach): TaskAutomaton * AbstractReachability
     """
+    automaton = None
     if spec.cons == Cons.ev:
         # Case 1: Objectives
-
-        # Step 1a: Construct task automaton
-        delta = [[(0, true_pred), (1, spec.predicate)], [(1, true_pred)]]
-        automaton = TaskAutomaton(delta, set([1]))
 
         # Step 1b: Construct abstract graph
         abstract_graph = [
             [AbstractEdge(1, spec.predicate, [true_pred])],
-            [AbstractEdge(1, None, [true_pred])],
+            [],
         ]
         abstract_reach = AbstractReachability(abstract_graph, set([1]))
 
@@ -53,11 +50,7 @@ def automaton_graph_from_spec(spec: TaskSpec):
         # Case 2: Constraints
 
         # Step 2a: Get automaton and graph for subtask
-        a1, r1 = automaton_graph_from_spec(spec.subtasks[0])
-
-        # Step 2b: Construct task automaton
-        delta = [[(t, land(b, spec.predicate)) for t, b in trans] for trans in a1.delta]
-        automaton = TaskAutomaton(delta, set(a1.final_states))
+        _, r1 = automaton_graph_from_spec(spec.subtasks[0])
 
         # Step 2c: Construct abstract graph
         abstract_graph = []
@@ -77,23 +70,12 @@ def automaton_graph_from_spec(spec: TaskSpec):
 
     elif spec.cons == Cons.seq:
         # Case 3: Sequencing
+        # import pdb
+        # pdb.set_trace()
 
         # Step 3a: Get automaton and graph for subtasks
-        a1, r1 = automaton_graph_from_spec(spec.subtasks[0])
-        a2, r2 = automaton_graph_from_spec(spec.subtasks[1])
-
-        # Step 3b: Construct task automaton
-        delta1 = [[(t, b) for t, b in trans] for trans in a1.delta]
-        delta2 = [[(t + a1.num_states, b) for t, b in trans] for trans in a2.delta]
-
-        delta = delta1 + delta2
-        for s in a1.final_states:
-            for t, b in a2.delta[0]:
-                delta[s].append((t + a1.num_states, b))
-
-        automaton = TaskAutomaton(
-            delta, set([t + a1.num_states for t in a2.final_states])
-        )
+        _, r1 = automaton_graph_from_spec(spec.subtasks[0])
+        _, r2 = automaton_graph_from_spec(spec.subtasks[1])
 
         # Step 3c: Construct abstract graph
         abstract_graph = [[copy_edge(e) for e in edges] for edges in r1.abstract_graph]
@@ -108,10 +90,10 @@ def automaton_graph_from_spec(spec: TaskSpec):
             abstract_graph.append(new_edges)
 
         for v in r1.final_vertices:
-            abstract_graph[v] = []
+            # abstract_graph[v] = []
             for e in r2.abstract_graph[0]:
                 new_target = e.target + r1.num_vertices - 1
-                new_constraints = r1.abstract_graph[v][0].constraints + e.constraints
+                new_constraints = e.constraints
                 abstract_graph[v].append(
                     AbstractEdge(new_target, e.predicate, new_constraints)
                 )
@@ -123,21 +105,8 @@ def automaton_graph_from_spec(spec: TaskSpec):
         # Case 4: Choice
 
         # Step 4a: Get automaton and graph for subtasks
-        a1, r1 = automaton_graph_from_spec(spec.subtasks[0])
-        a2, r2 = automaton_graph_from_spec(spec.subtasks[1])
-
-        # Step 4b: Construct task automaton
-        delta01 = [(t + 1, b) for t, b in a1.delta[0]]
-        delta02 = [(t + a1.num_states + 1, b) for t, b in a2.delta[0]]
-        delta0 = [delta01 + delta02]
-        delta1 = [[(t + 1, b) for t, b in trans] for trans in a1.delta]
-        delta2 = [[(t + a1.num_states + 1, b) for t, b in trans] for trans in a2.delta]
-        delta = delta0 + delta1 + delta2
-
-        final_states_1 = [t + 1 for t in a1.final_states]
-        final_states_2 = [t + a1.num_states + 1 for t in a2.final_states]
-        final_states = set(final_states_1 + final_states_2)
-        automaton = TaskAutomaton(delta, final_states)
+        _, r1 = automaton_graph_from_spec(spec.subtasks[0])
+        _, r2 = automaton_graph_from_spec(spec.subtasks[1])
 
         # Step 4c: Construct abstract graph
         abstract_graph = [[]]
@@ -168,7 +137,6 @@ def automaton_graph_from_spec(spec: TaskSpec):
         abstract_reach = AbstractReachability(abstract_graph, final_vertices)
 
     elif spec.cons == Cons.repeat:
-        automaton = None
         if spec.subtasks[0].cons == Cons.ev:
             abstract_graph = automaton_graph_from_spec(spec.subtasks[0])
         elif spec.subtasks[0].cons == Cons.alw:

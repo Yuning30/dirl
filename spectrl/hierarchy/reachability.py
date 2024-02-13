@@ -1,5 +1,6 @@
 from typing import List
 
+import graphviz
 import gym
 import numpy as np
 
@@ -298,6 +299,20 @@ class AbstractReachability:
             print(str(i) + " ->" + targets)
     
     def plot(self):
+        dot = graphviz.Digraph("spec")
+        assert len(self.abstract_graph) == self.num_vertices
+        for i in range(0, self.num_vertices):
+            if i in self.final_vertices:
+                dot.node(str(i), shape="doublecircle")
+            else:
+                dot.node(str(i), shape="circle")
+        
+        for start_node, edges in enumerate(self.abstract_graph):
+            for edge in edges:
+                dot.edge(str(start_node), str(edge.target))
+        
+        dot.render(filename="spec", directory="dot_output")
+            
 
 
 
