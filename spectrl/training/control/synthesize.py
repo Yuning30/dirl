@@ -47,6 +47,18 @@ def createProgNetwork(prog_type, observation_dim, action_dim):
 
     return prog
 
+def train_and_verify(env, verify_prog, prog_type, trainsteps, SEED):
+    trained_policy = train_policy(env, prog_type, trainsteps, SEED)
+    verified_policy = verify(verify_prog, trained_policy)
+
+def verify(verify_prog, policy):
+    pass
+    
+def train_policy(env, prog_type, trainsteps, seed):
+    prog = createProgNetwork()
+
+
+
 def train(env_name, prog_type, trainsteps, SEED, phaselearning=False, phase_trainiter_inc=0):
     # import pdb
     # pdb.set_trace()

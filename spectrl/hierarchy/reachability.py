@@ -11,6 +11,7 @@ from spectrl.util.dist import FiniteDistribution
 from spectrl.util.rl import get_rollout, RandomPolicy
 from heapq import heappop, heappush
 
+from spectrl.training.control.synthesize import train_and_verify
 
 class AbstractEdge:
     """
@@ -89,6 +90,8 @@ class AbstractEdge:
             agent.train(reach_env)
             policy = agent.get_policy()
             log_info = agent.rewardgraph
+        elif algo == "vel":
+            train_and_verify(reach_env, None, "Linear", 200, 0)
         else:
             raise ValueError('Algorithm "{}" not supported!'.format(algo))
 

@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
         # Step 5: Learn policy
         abstract_policy, nn_policies, stats = abstract_reach.learn_dijkstra_policy(
-            system, hyperparams, res_model=None, max_steps=20, render=render,
+            system, hyperparams, algo="vel", res_model=None, max_steps=20, render=render,
             neg_inf=-100, safety_penalty=-1, num_samples=500)
 
         # Test policy
