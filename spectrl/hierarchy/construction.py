@@ -166,9 +166,7 @@ def automaton_graph_from_spec(spec: TaskSpec):
                         AbstractEdge(edge.target, new_predicate, new_constraints)
                     )
                 abstract_graph.append(new_edges)
-            abstract_reach = AbstractReachability(
-                abstract_graph, set(r.final_vertices)
-            )
+            abstract_reach = AbstractReachability(abstract_graph, set(r.final_vertices))
         elif spec.subtasks[0].cons == Cons.seq:
             _, r = automaton_graph_from_spec(spec.subtasks[0])
             neighbor_of_initial = [e.target for e in r.abstract_graph[0]]
@@ -200,8 +198,8 @@ def automaton_graph_from_spec(spec: TaskSpec):
     return automaton, abstract_reach
 
 
-def true_pred(sys_state, res_state):
-    return 1e9
+def true_pred(sys_state):
+    return 0
 
 
 def copy_edge(edge):

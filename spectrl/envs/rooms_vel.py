@@ -20,7 +20,9 @@ class VelRoomsEnv(gym.Env):
                 low=init_dist[0], high=init_dist[1], dtype=np.float32
             )
         else:
-            self.init_dist = gym.spaces.Box(low=np.array([3, 3]), high=np.array([5, 5]), dtype=np.float32)
+            self.init_dist = gym.spaces.Box(
+                low=np.array([3, 3]), high=np.array([5, 5]), dtype=np.float32
+            )
         self.predicate = copy.deepcopy(predicate)
         self.constraints = copy.deepcopy(constraints)
         self.max_timesteps = max_timesteps
@@ -28,8 +30,16 @@ class VelRoomsEnv(gym.Env):
         self.observation_dim = 2
         self.action_dim = 2
 
+        self.horizon = max_timesteps
+
         # set the initial state
         self.reset()
+
+    def get_env_infos(self):
+        return {}
+
+    def set_seed(self, seed):
+        return
 
     def reset(self):
         self.steps = 0
@@ -70,8 +80,8 @@ class VelRoomsEnv(gym.Env):
         params = self.grid_params
 
         # find rooms of the states
-        r1 = (s1 // params.partition_size).astype(np.int)
-        r2 = (s2 // params.partition_size).astype(np.int)
+        r1 = (s1 // params.partition_size).astype(np.int32)
+        r2 = (s2 // params.partition_size).astype(np.int32)
 
         # find relative positions within rooms
         p1 = s1 - (r1 * params.partition_size)

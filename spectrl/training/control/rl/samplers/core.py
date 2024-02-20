@@ -45,8 +45,9 @@ def do_rollout(
     elif callable(env):
         env = env(**env_kwargs)
     else:
-        print("Unsupported environment format")
-        raise AttributeError
+        env = env
+        # print("Unsupported environment format")
+        # raise AttributeError
 
     if base_seed is not None:
         env.set_seed(base_seed)

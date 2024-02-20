@@ -59,7 +59,9 @@ if __name__ == "__main__":
         # Goto destination, return to initial
         spec3 = seq(
             ev(grid_params.in_room(topleft)),
-            ev(grid_params.in_room(START_ROOM[env_num])),
+            seq(ev(grid_params.in_room(START_ROOM[env_num])),
+            seq(ev(grid_params.in_room(START_ROOM[env_num])),
+            ev(grid_params.in_room(START_ROOM[env_num]))))
         )
         # Choose between top-right and bottom-left blocks (Same difficulty - learns 3/4 edges)
         spec4 = choose(

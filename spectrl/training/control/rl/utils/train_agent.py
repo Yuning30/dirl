@@ -67,6 +67,7 @@ def train_agent(
             num_cpu=num_cpu,
             corrector=corrector,
             lam_corr=lam_corr,
+            env=agent.env,
         )  # env=agent.env)#fixme2.
         stats = agent.train_step(**args)
         train_curve[i] = stats[0]

@@ -13,8 +13,12 @@ class AbstractState:
 
     # s: np.array(2) or array-like
     def contains(self, s):
-        return s[0] >= self.region[0][0] and s[0] <= self.region[1][0] \
-            and s[1] >= self.region[0][1] and s[1] <= self.region[1][1]
+        return (
+            s[0] >= self.region[0][0]
+            and s[0] <= self.region[1][0]
+            and s[1] >= self.region[0][1]
+            and s[1] <= self.region[1][1]
+        )
 
     # sample a point from the region
     def sample(self):
@@ -31,7 +35,9 @@ class GridParams:
     # wall_size: (tx:int, ty:int) thickness of walls (thickness of horizontal wall first)
     # vertical_door, horizontal_door: relative coordinates for door, specifies min and max
     #                                 coordinates for door space
-    def __init__(self, size, edges, room_size, wall_size, vertical_door, horizontal_door):
+    def __init__(
+        self, size, edges, room_size, wall_size, vertical_door, horizontal_door
+    ):
         self.size = np.array(size)
         self.edges = edges
         self.room_size = np.array(room_size)
@@ -40,29 +46,31 @@ class GridParams:
         self.vdoor = np.array(vertical_door)
         self.hdoor = np.array(horizontal_door)
         self.graph = self.make_adjacency_matrix()
-        self.grid_region = AbstractState([np.array([0., 0.]), self.size * self.partition_size])
+        self.grid_region = AbstractState(
+            [np.array([0.0, 0.0]), self.size * self.partition_size]
+        )
 
     # map a room to an integer
     def get_index(self, r):
-        return self.size[1]*r[0] + r[1]
+        return self.size[1] * r[0] + r[1]
 
     # returns the direction of r2 from r1
     def get_direction(self, r1, r2):
-        if r1[0] == r2[0]+1 and r1[1] == r2[1]:
+        if r1[0] == r2[0] + 1 and r1[1] == r2[1]:
             return 0  # up
-        elif r1[0] == r2[0] and r1[1] == r2[1]+1:
+        elif r1[0] == r2[0] and r1[1] == r2[1] + 1:
             return 1  # left
-        elif r1[0] == r2[0]-1 and r1[1] == r2[1]:
+        elif r1[0] == r2[0] - 1 and r1[1] == r2[1]:
             return 2  # down
-        elif r1[0] == r2[0] and r1[1] == r2[1]-1:
+        elif r1[0] == r2[0] and r1[1] == r2[1] - 1:
             return 3  # right
         else:
-            raise Exception('Given rooms are not adjacent!')
+            raise Exception("Given rooms are not adjacent!")
 
     # takes pairs of adjacent rooms and creates a h*w-by-4 matrix of booleans
     # returns the compact adjacency matrix
     def make_adjacency_matrix(self):
-        graph = [[False]*4 for _ in range(self.size[0]*self.size[1])]
+        graph = [[False] * 4 for _ in range(self.size[0] * self.size[1])]
         for r1, r2 in self.edges:
             graph[self.get_index(r1)][self.get_direction(r1, r2)] = True
             graph[self.get_index(r2)][self.get_direction(r2, r1)] = True
@@ -81,7 +89,7 @@ class GridParams:
         low = center - half_size
         high = center + half_size
 
-        def predicate(sys_state, res_state):
+        def predicate(sys_state):
             return min(np.concatenate([sys_state[:2] - low, high - sys_state[:2]]))
 
         return predicate
@@ -93,8 +101,8 @@ class GridParams:
         low = center - half_size
         high = center + half_size
 
-        def predicate(sys_state, res_state):
-            return 10*max(np.concatenate(low - [sys_state[:2], sys_state[:2] - high]))
+        def predicate(sys_state):
+            return 10 * max(np.concatenate(low - [sys_state[:2], sys_state[:2] - high]))
 
         return predicate
 
@@ -112,7 +120,7 @@ class RoomsEnv(gym.Env):
         self.max_timesteps = max_timesteps
 
         max_vel = np.amin(self.grid_params.wall_size) / 2
-        self.action_scale = np.array([max_vel, np.pi/2])
+        self.action_scale = np.array([max_vel, np.pi / 2])
 
         # set the initial state
         self.reset()
@@ -124,8 +132,9 @@ class RoomsEnv(gym.Env):
 
     def step(self, action):
         action = self.action_scale * action
-        action = np.array([action[0] * math.cos(action[1]),
-                           action[0] * math.sin(action[1])])
+        action = np.array(
+            [action[0] * math.cos(action[1]), action[0] * math.sin(action[1])]
+        )
         next_state = self.state + action
         if self.path_clear(self.state, next_state):
             self.state = next_state
@@ -150,7 +159,7 @@ class RoomsEnv(gym.Env):
 
     @property
     def action_space(self):
-        high = np.array([1., 1.])
+        high = np.array([1.0, 1.0])
         low = -high
         return gym.spaces.Box(low, high, dtype=np.float32)
 
@@ -176,8 +185,8 @@ class RoomsEnv(gym.Env):
         params = self.grid_params
 
         # find rooms of the states
-        r1 = (s1//params.partition_size).astype(np.int)
-        r2 = (s2//params.partition_size).astype(np.int)
+        r1 = (s1 // params.partition_size).astype(np.int32)
+        r2 = (s2 // params.partition_size).astype(np.int32)
 
         # find relative positions within rooms
         p1 = s1 - (r1 * params.partition_size)
@@ -187,16 +196,21 @@ class RoomsEnv(gym.Env):
             return False
 
         # both states are inside the same room (not in the door area)
-        if (p1[0] <= params.room_size[0] and p1[1] <= params.room_size[1]
-                and p2[0] <= params.room_size[0] and p2[1] <= params.room_size[1]):
+        if (
+            p1[0] <= params.room_size[0]
+            and p1[1] <= params.room_size[1]
+            and p2[0] <= params.room_size[0]
+            and p2[1] <= params.room_size[1]
+        ):
             return True
         # both states in door area
-        if ((p1[0] > params.room_size[0] or p1[1] > params.room_size[1])
-                and (p2[0] > params.room_size[0] or p2[1] > params.room_size[1])):
+        if (p1[0] > params.room_size[0] or p1[1] > params.room_size[1]) and (
+            p2[0] > params.room_size[0] or p2[1] > params.room_size[1]
+        ):
             return True
 
         # swap to make sure s1 is in the room and s2 is in the door area
-        if (p2[0] <= params.room_size[0] and p2[1] <= params.room_size[1]):
+        if p2[0] <= params.room_size[0] and p2[1] <= params.room_size[1]:
             p1, p2 = p2, p1
             r1, r2 = r2, r1
             s1, s2 = s2, s1
@@ -208,16 +222,22 @@ class RoomsEnv(gym.Env):
                 return self.check_vertical_intersect(p1, p2, params.room_size[0])
             # s1 is below s2
             else:
-                return self.check_vertical_intersect((s1[0], p1[1]), (s2[0], p2[1]),
-                                                     (r2[0]+1) * params.partition_size[0])
+                return self.check_vertical_intersect(
+                    (s1[0], p1[1]),
+                    (s2[0], p2[1]),
+                    (r2[0] + 1) * params.partition_size[0],
+                )
         else:
             # s1 is left of s2
             if (r1 == r2).all():
                 return self.check_horizontal_intersect(p1, p2, params.room_size[1])
             # s1 is right of s2
             else:
-                return self.check_horizontal_intersect((p1[0], s1[1]), (p2[0], s2[1]),
-                                                       (r2[1]+1) * params.partition_size[1])
+                return self.check_horizontal_intersect(
+                    (p1[0], s1[1]),
+                    (p2[0], s2[1]),
+                    (r2[1] + 1) * params.partition_size[1],
+                )
 
     # check if the state s is a legal state that is within the grid and not inside any wall area
     # r is the room of the state
@@ -232,13 +252,19 @@ class RoomsEnv(gym.Env):
             return False
 
         # make sure state is not inside any wall area
-        if (p[0] <= params.room_size[0] and p[1] <= params.room_size[1]):
+        if p[0] <= params.room_size[0] and p[1] <= params.room_size[1]:
             return True
-        elif (p[0] > params.room_size[0] and p[1] >= params.hdoor[0]
-              and p[1] <= params.hdoor[1]):
+        elif (
+            p[0] > params.room_size[0]
+            and p[1] >= params.hdoor[0]
+            and p[1] <= params.hdoor[1]
+        ):
             return params.graph[params.get_index(r)][2]
-        elif (p[1] > params.room_size[1] and p[0] >= params.vdoor[0]
-              and p[0] <= params.vdoor[1]):
+        elif (
+            p[1] > params.room_size[1]
+            and p[0] >= params.vdoor[0]
+            and p[0] <= params.vdoor[1]
+        ):
             return params.graph[params.get_index(r)][3]
         else:
             return False
@@ -247,12 +273,10 @@ class RoomsEnv(gym.Env):
     # horizontal coordinates should be relative positions within rooms
     def check_vertical_intersect(self, s1, s2, x):
         y = ((s2[1] - s1[1]) * (x - s1[0]) / (s2[0] - s1[0])) + s1[1]
-        return (self.grid_params.hdoor[0] <= y
-                and y <= self.grid_params.hdoor[1])
+        return self.grid_params.hdoor[0] <= y and y <= self.grid_params.hdoor[1]
 
     # check if line from s1 to s2 intersects the vertical axis at a point inside door region
     # vertical coordinates should be relative positions within rooms
     def check_horizontal_intersect(self, s1, s2, y):
         x = ((s2[0] - s1[0]) * (y - s1[1]) / (s2[1] - s1[1])) + s1[0]
-        return (self.grid_params.vdoor[0] <= x
-                and x <= self.grid_params.vdoor[1])
+        return self.grid_params.vdoor[0] <= x and x <= self.grid_params.vdoor[1]
