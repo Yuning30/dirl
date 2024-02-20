@@ -11,13 +11,13 @@ from torch.autograd import Variable
 import copy
 
 # samplers
-import control.rl.samplers.core as trajectory_sampler
+import spectrl.training.control.rl.samplers.core as trajectory_sampler
 
 # utility functions
-import control.rl.utils.process_samples as process_samples
-from control.rl.utils.logger import DataLog
-from control.rl.utils.cg_solve import cg_solve
-from control.rl.algos.batch_reinforce import BatchREINFORCE
+import spectrl.training.control.rl.utils.process_samples as process_samples
+from spectrl.training.control.rl.utils.logger import DataLog
+from spectrl.training.control.rl.utils.cg_solve import cg_solve
+from spectrl.training.control.rl.algos.batch_reinforce import BatchREINFORCE
 
 
 class NPG(BatchREINFORCE):

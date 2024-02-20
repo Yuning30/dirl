@@ -1,5 +1,5 @@
 from typing import List
-
+import pdb
 import graphviz
 import gym
 import numpy as np
@@ -12,6 +12,8 @@ from spectrl.util.rl import get_rollout, RandomPolicy
 from heapq import heappop, heappush
 
 from spectrl.training.control.synthesize import train_and_verify
+from spectrl.envs.rooms_vel import VelRoomsEnv
+
 
 class AbstractEdge:
     """
@@ -31,7 +33,7 @@ class AbstractEdge:
 
     def learn_policy(
         self,
-        env,
+        grid_params,
         hyperparams,
         source_vertex,
         init_dist=None,
@@ -60,16 +62,12 @@ class AbstractEdge:
         """
 
         # Step 1: Create reachability environment.
-        reach_env = ReachabilityEnv(
-            env,
+        reach_env = VelRoomsEnv(
+            grid_params,
             init_dist,
             self.predicate,
             self.constraints,
-            max_steps=max_steps,
-            res_model=res_model,
-            safety_penalty=safety_penalty,
-            neg_inf=neg_inf,
-            alpha=alpha,
+            max_timesteps=max_steps,
         )
 
         # Step 2: Call the learning algorithm
@@ -91,7 +89,19 @@ class AbstractEdge:
             policy = agent.get_policy()
             log_info = agent.rewardgraph
         elif algo == "vel":
-            train_and_verify(reach_env, None, "Linear", 200, 0)
+            pdb.set_trace()
+            train_and_verify(
+                0,
+                reach_env,
+                None,
+                "Linear",
+                200,
+                init_dist,
+                None,
+                None,
+                # self.predicate.goal_region,
+                # [constraint.avoid_region for constraint in self.constraints],
+            )
         else:
             raise ValueError('Algorithm "{}" not supported!'.format(algo))
 
@@ -122,7 +132,7 @@ class AbstractReachability:
 
     def learn_dijkstra_policy(
         self,
-        env,
+        grid_params,
         hyperparams,
         algo="ars",
         res_model=None,
@@ -206,7 +216,7 @@ class AbstractReachability:
 
                         # Learn policy
                         edge_policy, reach_env, log_info = edge.learn_policy(
-                            env,
+                            grid_params,
                             hyperparams,
                             vertex,
                             start_dist,
@@ -300,7 +310,7 @@ class AbstractReachability:
             for edge in self.abstract_graph[i]:
                 targets += " " + str(edge.target)
             print(str(i) + " ->" + targets)
-    
+
     def plot(self):
         dot = graphviz.Digraph("spec")
         assert len(self.abstract_graph) == self.num_vertices
@@ -309,14 +319,12 @@ class AbstractReachability:
                 dot.node(str(i), shape="doublecircle")
             else:
                 dot.node(str(i), shape="circle")
-        
+
         for start_node, edges in enumerate(self.abstract_graph):
             for edge in edges:
                 dot.edge(str(start_node), str(edge.target))
-        
-        dot.render(filename="spec", directory="dot_output")
-            
 
+        dot.render(filename="spec", directory="dot_output")
 
 
 class ReachabilityEnv(gym.Env):

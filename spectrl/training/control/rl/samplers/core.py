@@ -1,27 +1,30 @@
 import logging
 import numpy as np
-from control.rl.utils.gym_env import GymEnv
-from control.rl.utils import tensor_utils
+from spectrl.training.control.rl.utils.gym_env import GymEnv
+from spectrl.training.control.rl.utils import tensor_utils
+
 logging.disable(logging.CRITICAL)
 import multiprocess as mp
 import time as timer
+
 logging.disable(logging.CRITICAL)
 
 import torch
 from torch.autograd import Variable
 
+
 # Single core rollout to sample trajectories
 # =======================================================
 def do_rollout(
-        num_traj,
-        env,
-        policy,
-        eval_mode = False,
-        horizon = 1e6,
-        base_seed = None,
-        env_kwargs=None,
-        corrector=None,
-        lam_corr=None
+    num_traj,
+    env,
+    policy,
+    eval_mode=False,
+    horizon=1e6,
+    base_seed=None,
+    env_kwargs=None,
+    corrector=None,
+    lam_corr=None,
 ):
     """
     :param num_traj:    number of trajectories (int)
@@ -67,9 +70,9 @@ def do_rollout(
             env.set_seed(seed)
             np.random.seed(seed)
 
-        observations=[]
-        actions=[]
-        rewards=[]
+        observations = []
+        actions = []
+        rewards = []
         agent_infos = []
         env_infos = []
 
@@ -83,12 +86,16 @@ def do_rollout(
         while t < horizon and done != True:
             a, agent_info = policy.get_action(o)
             if eval_mode:
-                a = agent_info['evaluation']
+                a = agent_info["evaluation"]
 
             if corrector is not None:
                 obs = np.float32(o.reshape(1, -1))
                 obs_var.data = torch.from_numpy(obs)
-                a = a / (1 + lam_corr) + (lam_corr / (1 + lam_corr)) * corrector(obs_var).data.numpy().ravel()
+                a = (
+                    a / (1 + lam_corr)
+                    + (lam_corr / (1 + lam_corr))
+                    * corrector(obs_var).data.numpy().ravel()
+                )
 
             env_info_base = env.get_env_infos()
             next_o, r, done, env_info_step = env.step(a)
@@ -123,12 +130,12 @@ def do_rollout(
             rewards=np.array(rewards),
             agent_infos=tensor_utils.stack_tensor_dict_list(agent_infos),
             env_infos=tensor_utils.stack_tensor_dict_list(env_infos),
-            terminated=done
+            terminated=done,
         )
         paths.append(path)
 
-    #print (f'Average final reward: {np.average(np.array(finals))}')
-    #print (f'Average execution steps: {np.average(np.array([len(path["observations"]) for path in paths]))}')
+    # print (f'Average final reward: {np.average(np.array(finals))}')
+    # print (f'Average execution steps: {np.average(np.array([len(path["observations"]) for path in paths]))}')
 
     # Update the mu and sigma of samples.
     # if hasattr(policy, 'model'):
@@ -138,52 +145,68 @@ def do_rollout(
     #         print (f'sample mu: {policy.model.mu}')
     #         print (f'sample inv: {policy.model.sigma_inv}')
 
-    del(env)
+    del env
     return paths
 
 
 def sample_paths(
-        num_traj,
-        env,
-        policy,
-        eval_mode = False,
-        horizon = 1e6,
-        base_seed = None,
-        num_cpu = 1,
-        max_process_time=300,
-        max_timeouts=4,
-        suppress_print=False,
-        env_kwargs=None,
-        corrector=None,
-        lam_corr=None
-        ):
+    num_traj,
+    env,
+    policy,
+    eval_mode=False,
+    horizon=1e6,
+    base_seed=None,
+    num_cpu=1,
+    max_process_time=300,
+    max_timeouts=4,
+    suppress_print=False,
+    env_kwargs=None,
+    corrector=None,
+    lam_corr=None,
+):
 
     num_cpu = 1 if num_cpu is None else num_cpu
-    num_cpu = mp.cpu_count() if num_cpu == 'max' else num_cpu
+    num_cpu = mp.cpu_count() if num_cpu == "max" else num_cpu
     assert type(num_cpu) == int
 
     if num_cpu == 1:
-        input_dict = dict(num_traj=num_traj, env=env, policy=policy,
-                          eval_mode=eval_mode, horizon=horizon, base_seed=base_seed,
-                          env_kwargs=env_kwargs, corrector=corrector, lam_corr=lam_corr)
+        input_dict = dict(
+            num_traj=num_traj,
+            env=env,
+            policy=policy,
+            eval_mode=eval_mode,
+            horizon=horizon,
+            base_seed=base_seed,
+            env_kwargs=env_kwargs,
+            corrector=corrector,
+            lam_corr=lam_corr,
+        )
         # dont invoke multiprocessing if not necessary
         return do_rollout(**input_dict)
 
     # do multiprocessing otherwise
-    paths_per_cpu = int(np.ceil(num_traj/num_cpu))
-    input_dict_list= []
+    paths_per_cpu = int(np.ceil(num_traj / num_cpu))
+    input_dict_list = []
     for i in range(num_cpu):
-        input_dict = dict(num_traj=paths_per_cpu, env=env, policy=policy,
-                          eval_mode=eval_mode, horizon=horizon,
-                          base_seed=base_seed + i * paths_per_cpu,
-                          env_kwargs=env_kwargs, corrector=corrector, lam_corr=lam_corr)
+        input_dict = dict(
+            num_traj=paths_per_cpu,
+            env=env,
+            policy=policy,
+            eval_mode=eval_mode,
+            horizon=horizon,
+            base_seed=base_seed + i * paths_per_cpu,
+            env_kwargs=env_kwargs,
+            corrector=corrector,
+            lam_corr=lam_corr,
+        )
         input_dict_list.append(input_dict)
     if suppress_print is False:
         start_time = timer.time()
         print("####### Gathering Samples #######")
 
-    results = _try_multiprocess(do_rollout, input_dict_list,
-                                num_cpu, max_process_time, max_timeouts)
+    results = _try_multiprocess(
+        do_rollout, input_dict_list, num_cpu, max_process_time, max_timeouts
+    )
     paths = []
     # result is a paths type and results is list of paths
     for result in results:
@@ -191,27 +214,30 @@ def sample_paths(
             paths.append(path)
 
     if suppress_print is False:
-        print("======= Samples Gathered  ======= | >>>> Time taken = %f " %(timer.time()-start_time) )
+        print(
+            "======= Samples Gathered  ======= | >>>> Time taken = %f "
+            % (timer.time() - start_time)
+        )
 
     return paths
 
 
 def sample_data_batch(
-        num_samples,
-        env,
-        policy,
-        eval_mode = False,
-        horizon = 1e6,
-        base_seed = None,
-        num_cpu = 1,
-        paths_per_call = 2,
-        env_kwargs=None,
-        corrector=None,
-        lam_corr=None
-        ):
+    num_samples,
+    env,
+    policy,
+    eval_mode=False,
+    horizon=1e6,
+    base_seed=None,
+    num_cpu=1,
+    paths_per_call=2,
+    env_kwargs=None,
+    corrector=None,
+    lam_corr=None,
+):
 
     num_cpu = 1 if num_cpu is None else num_cpu
-    num_cpu = mp.cpu_count() if num_cpu == 'max' else num_cpu
+    num_cpu = mp.cpu_count() if num_cpu == "max" else num_cpu
     assert type(num_cpu) == int
 
     start_time = timer.time()
@@ -222,18 +248,32 @@ def sample_data_batch(
     base_seed = 123 if base_seed is None else base_seed
     while sampled_so_far <= num_samples:
         base_seed = base_seed + 12345
-        new_paths = sample_paths(paths_per_call * num_cpu, env, policy,
-                                 eval_mode, horizon, base_seed, num_cpu,
-                                 suppress_print=True, env_kwargs=env_kwargs,
-                                 corrector=corrector, lam_corr=lam_corr)
+        new_paths = sample_paths(
+            paths_per_call * num_cpu,
+            env,
+            policy,
+            eval_mode,
+            horizon,
+            base_seed,
+            num_cpu,
+            suppress_print=True,
+            env_kwargs=env_kwargs,
+            corrector=corrector,
+            lam_corr=lam_corr,
+        )
         for path in new_paths:
             paths.append(path)
         paths_so_far += len(new_paths)
-        new_samples = np.sum([len(p['rewards']) for p in new_paths])
+        new_samples = np.sum([len(p["rewards"]) for p in new_paths])
         sampled_so_far += new_samples
-    print("======= Samples Gathered  ======= | >>>> Time taken = %f " % (timer.time() - start_time))
-    print("................................. | >>>> # samples = %i # trajectories = %i " % (
-    sampled_so_far, paths_so_far))
+    print(
+        "======= Samples Gathered  ======= | >>>> Time taken = %f "
+        % (timer.time() - start_time)
+    )
+    print(
+        "................................. | >>>> # samples = %i # trajectories = %i "
+        % (sampled_so_far, paths_so_far)
+    )
     return paths
 
 
@@ -244,7 +284,9 @@ def _try_multiprocess(func, input_dict_list, num_cpu, max_process_time, max_time
         return None
 
     pool = mp.Pool(processes=num_cpu, maxtasksperchild=1)
-    parallel_runs = [pool.apply_async(func, kwds=input_dict) for input_dict in input_dict_list]
+    parallel_runs = [
+        pool.apply_async(func, kwds=input_dict) for input_dict in input_dict_list
+    ]
     try:
         results = [p.get(timeout=max_process_time) for p in parallel_runs]
     except Exception as e:
@@ -253,7 +295,9 @@ def _try_multiprocess(func, input_dict_list, num_cpu, max_process_time, max_time
         pool.close()
         pool.terminate()
         pool.join()
-        return _try_multiprocess(func, input_dict_list, num_cpu, max_process_time, max_timeouts-1)
+        return _try_multiprocess(
+            func, input_dict_list, num_cpu, max_process_time, max_timeouts - 1
+        )
 
     pool.close()
     pool.terminate()
