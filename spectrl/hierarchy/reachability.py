@@ -36,13 +36,11 @@ class AbstractEdge:
         grid_params,
         hyperparams,
         source_vertex,
+        predicate=None,
+        constraints=None,
         init_dist=None,
-        algo="ars",
-        res_model=None,
+        algo="vel",
         max_steps=100,
-        safety_penalty=-1,
-        neg_inf=-10,
-        alpha=0,
         use_gpu=False,
         render=False,
     ):
@@ -69,7 +67,7 @@ class AbstractEdge:
             self.constraints,
             max_timesteps=max_steps,
         )
-
+        pdb.set_trace()
         # Step 2: Call the learning algorithm
         print(
             "\nLearning policy for edge {} -> {}\n".format(source_vertex, self.target)
@@ -95,12 +93,10 @@ class AbstractEdge:
                 reach_env,
                 None,
                 "Linear",
-                200,
+                40,
                 init_dist,
-                None,
-                None,
-                # self.predicate.goal_region,
-                # [constraint.avoid_region for constraint in self.constraints],
+                predicate.goal_region,
+                constraints,
             )
         else:
             raise ValueError('Algorithm "{}" not supported!'.format(algo))
@@ -219,15 +215,9 @@ class AbstractReachability:
                             grid_params,
                             hyperparams,
                             vertex,
-                            start_dist,
-                            algo,
-                            res_model,
-                            max_steps,
-                            safety_penalty,
-                            neg_inf,
-                            alpha,
-                            use_gpu,
-                            render,
+                            predicate=edge.predicate,
+                            constraints=edge.constraints,
+                            init_dist=start_dist,
                         )
                         nn_policies[vertex].append(edge_policy)
 
@@ -540,7 +530,6 @@ class ConstrainedEnv(ReachabilityEnv):
 
 
 class HierarchicalPolicy:
-
     def __init__(self, abstract_policy, nn_policies, abstract_graph, sys_dim):
         self.abstract_policy = abstract_policy
         self.nn_policies = nn_policies

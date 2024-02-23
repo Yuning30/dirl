@@ -1,4 +1,7 @@
 from spectrl.envs.rooms import GridParams
+from spectrl.envs.rooms import GridParamsVEL
+
+VEL_GRID_PARAMS_LIST = [GridParamsVEL()]
 
 GRID_PARAMS_LIST = []
 MAX_TIMESTEPS = []

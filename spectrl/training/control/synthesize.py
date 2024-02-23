@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import pdb
 
 from spectrl.training.control.rl.utils.gym_env import GymEnv
 from spectrl.training.control.rl.policies.gaussian_prog import *
@@ -8,6 +9,7 @@ from spectrl.training.control.rl.utils.fc_network import FCNetwork
 from spectrl.training.control.rl.baselines.mlp_baseline import MLPBaseline
 from spectrl.training.control.rl.algos.npg_cg import NPG
 from spectrl.training.control.rl.algos.trpo import TRPO
+
 # from spectrl.training.control.rl.algos.ppo_clip import PPO
 from spectrl.training.control.rl.utils.train_agent import train_agent
 
@@ -65,14 +67,52 @@ def train_and_verify(
     goal_region,
     constraints,
 ):
+    pdb.set_trace()
     trained_policy = train_policy(env, prog_type, trainsteps, seed)
+    pdb.set_trace()
+    end_states = estimate_reach_region(env, trained_policy)
+    pdb.set_trace()
+    VEL_goal_region = compute_VEL_goal_region(goal_region, end_states)
+    pdb.set_trace()
     verified_policy = verify(
-        verify_prog, trained_policy, init_distribution, goal_region, constraints
+        verify_prog, trained_policy, init_distribution, VEL_goal_region, constraints
     )
+    return verified_policy, VEL_goal_region
 
 
 def verify(verify_prog, policy, init_distribution, goal_region, constraints):
-    pass
+    # TODO
+    verified_policy = None
+    return verified_policy
+
+
+def estimate_reach_region(env, policy, rollouts=100):
+    end_states = []
+    for i in range(0, rollouts):
+        state, done = env.reset(), False
+        while not done:
+            action = policy.get_action(state)[1]["mean"]
+            next_state, rwd, done, _ = env.step(action)
+            state = next_state
+
+        end_states.append(state)
+
+    return np.stack(end_states)
+
+
+def compute_VEL_goal_region(gt_goal_region, estimated_end_states):
+    # now assume that gt_goal_region and estimated_end_state have same dimension
+    # partial goal region will be considered later in cartpole
+    estimated_lower = np.min(estimated_end_states, axis=0)
+    estimated_upper = np.max(estimated_end_states, axis=0)
+
+    inter_lower = np.where(estimated_lower > gt_goal_region[0], estimated_lower, gt_goal_region[0])
+    inter_upper = np.where(estimated_upper < gt_goal_region[1], estimated_upper, gt_goal_region[1])
+    intersect = np.all(inter_lower < inter_upper)
+
+    if intersect:
+        return np.array([inter_lower, inter_upper])
+    return gt_goal_region
 
 
 def train_policy(env, prog_type, trainsteps, seed):
@@ -93,7 +133,7 @@ def train_policy(env, prog_type, trainsteps, seed):
         save_logs=True,
     )
     agent = train_agent(
-        job_name="env",  # No. Train with rewards
+        job_name="9rooms",  # No. Train with rewards
         agent=agent,
         seed=seed,
         niter=trainsteps,

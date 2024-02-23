@@ -10,6 +10,7 @@ from spectrl.examples.rooms_envs import (
     MAX_TIMESTEPS,
     START_ROOM,
     FINAL_ROOM,
+    VEL_GRID_PARAMS_LIST
 )
 from spectrl.envs.rooms import RoomsEnv
 
@@ -31,7 +32,7 @@ if __name__ == "__main__":
 
     for i in num_iters:
 
-        grid_params = GRID_PARAMS_LIST[env_num]
+        grid_params = VEL_GRID_PARAMS_LIST[0]
 
         hyperparams = HyperParams(30, i, 30, 15, 0.05, 0.3, 0.15)
 
@@ -42,69 +43,18 @@ if __name__ == "__main__":
         )
 
         # Step 1: initialize system environment
-        system = RoomsEnv(grid_params, START_ROOM[env_num], FINAL_ROOM[env_num])
-
-        # Step 4: List of specs.
-        bottomright = (0, 2)
-        topleft = (2, 0)
-
-        # test specs
-        spec0 = ev(grid_params.in_room(FINAL_ROOM[env_num]))
-        spec1 = seq(
-            ev(grid_params.in_room(FINAL_ROOM[env_num])),
-            ev(grid_params.in_room(START_ROOM[env_num])),
-        )
-        spec2 = ev(grid_params.in_room(topleft))
-
-        # Goto destination, return to initial
         spec3 = seq(
-            ev(grid_params.in_room(topleft)),
-            seq(ev(grid_params.in_room(START_ROOM[env_num])),
-            seq(ev(grid_params.in_room(START_ROOM[env_num])),
-            ev(grid_params.in_room(START_ROOM[env_num]))))
-        )
-        # Choose between top-right and bottom-left blocks (Same difficulty - learns 3/4 edges)
-        spec4 = choose(
-            ev(grid_params.in_room(bottomright)), ev(grid_params.in_room(topleft))
-        )
-        # Choose between top-right and bottom-left, then go to Final state (top-right).
-        # Only one path is possible (learns 5/5 edges. Should have a bad edge)
-        spec5 = seq(
-            choose(
-                ev(grid_params.in_room(bottomright)), ev(grid_params.in_room(topleft))
-            ),
-            ev(grid_params.in_room(FINAL_ROOM[env_num])),
-        )
-        # Add obsacle towards topleft
-        spec6 = alw(grid_params.avoid_center((1, 0)), ev(grid_params.in_room(topleft)))
-        # Either go to top-left or bottom-right. obstacle on the way to top-left.
-        # Then, go to Final state. Only one route is possible
-        spec7 = seq(
-            choose(
-                alw(grid_params.avoid_center((1, 0)), ev(grid_params.in_room(topleft))),
-                ev(grid_params.in_room(bottomright)),
-            ),
-            ev(grid_params.in_room(FINAL_ROOM[env_num])),
+            ev(grid_params.in_room(4)),
+            seq(ev(grid_params.in_room(7)),
+            seq(ev(grid_params.in_room(8)),
+            ev(grid_params.in_room(5))))
         )
 
-        specs = [spec0, spec1, spec2, spec3, spec4, spec5, spec6, spec7]
+        spec11 = seq(ev(grid_params.in_room(1)), repeat(spec3))
+        # import pdb
 
-        spec8 = copy.deepcopy(spec5)
-        spec8 = repeat(spec8)
-
-        spec9 = seq(spec8, spec8)
-
-        spec10 = seq(
-            alw(grid_params.avoid_center((1, 0)), ev(grid_params.in_room(topleft))),
-            alw(grid_params.avoid_center((2, 0)), ev(grid_params.in_room(topleft))),
-        )
-        # Step 3: construct abstract reachability graph
-
-        spec11 = repeat(spec3)
-        import pdb
-
-        pdb.set_trace()
-        spec9.__str__()
+        # pdb.set_trace()
+        print(spec11)
         _, abstract_reach = automaton_graph_from_spec(spec11)
         print("\n**** Abstract Graph ****")
         abstract_reach.pretty_print()
@@ -120,7 +70,7 @@ if __name__ == "__main__":
             hyperparams,
             algo="vel",
             res_model=None,
-            max_steps=20,
+            max_steps=100,
             render=render,
             neg_inf=-100,
             safety_penalty=-1,

@@ -107,6 +107,64 @@ class GridParams:
         return predicate
 
 
+class Predicate:
+    def __init__(self, f, expr_str=None, goal_region=None):
+        self.f = f
+        self.expr_str = expr_str
+        self.goal_region = goal_region
+
+    def __call__(self, state):
+        return self.f(state)
+
+    def __str__(self):
+        return self.expr_str
+
+
+class GridParamsVEL:
+
+    # size: (h:int, w:int) specifying size of grid
+    # edges: list of pairs of adjacent rooms (room is a pair (x,y) - 0 based indexing)
+    #        first coordinate is the vertical position (just like matrix indexing)
+    # room_size: (l:int, b:int) size of a single room (height first)
+    # wall_size: (tx:int, ty:int) thickness of walls (thickness of horizontal wall first)
+    # vertical_door, horizontal_door: relative coordinates for door, specifies min and max
+    #                                 coordinates for door space
+    def __init__(self, radius=0.1):
+        self.radius = radius
+
+    # region corresponding to the center of a room
+    def get_center_region(self, room):
+        x, y = room // 3, room % 3
+        center = np.array([x, y])
+        return AbstractState([center - self.radius, center + self.radius])
+
+    # get predicate corresponding to center of room
+    def in_room(self, room):
+        x, y = room // 3, room % 3
+        center = np.array([x, y]) + 0.5
+
+        def predicate(state):
+            return self.radius - np.linalg.norm(state - center)
+
+        return Predicate(
+            predicate,
+            expr_str=f"in_room({room})",
+            goal_region=np.array([center - self.radius, center + self.radius]),
+        )
+
+    # get predicate to avoid the center of a room
+    def avoid_center(self, room):
+        center = self.partition_size * np.array(room) + (self.room_size / 2)
+        half_size = self.wall_size / 2
+        low = center - half_size
+        high = center + half_size
+
+        def predicate(state):
+            return 10 * max(np.concatenate(low - [sys_state[:2], sys_state[:2] - high]))
+
+        return predicate
+
+
 # Environment modelling 2d grid with rooms
 class RoomsEnv(gym.Env):
 
