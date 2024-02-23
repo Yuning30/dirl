@@ -68,12 +68,6 @@ if __name__ == "__main__":
         abstract_policy, nn_policies, stats = abstract_reach.learn_dijkstra_policy(
             grid_params,
             hyperparams,
-            algo="vel",
-            res_model=None,
-            max_steps=100,
-            render=render,
-            neg_inf=-100,
-            safety_penalty=-1,
             num_samples=500,
         )
 

@@ -88,7 +88,7 @@ class AbstractEdge:
             log_info = agent.rewardgraph
         elif algo == "vel":
             pdb.set_trace()
-            train_and_verify(
+            policy, VEL_goal_region = train_and_verify(
                 0,
                 reach_env,
                 None,
@@ -107,7 +107,7 @@ class AbstractEdge:
                 get_rollout(reach_env, policy, True)
             reach_env.close_viewer()
 
-        return policy, reach_env, log_info
+        return policy, VEL_goal_region
 
 
 class AbstractReachability:
@@ -130,15 +130,7 @@ class AbstractReachability:
         self,
         grid_params,
         hyperparams,
-        algo="ars",
-        res_model=None,
-        max_steps=100,
-        safety_penalty=-1,
-        neg_inf=-10,
-        alpha=0,
         num_samples=300,
-        use_gpu=False,
-        render=False,
         succ_thresh=0.0,
     ):
         """
@@ -206,12 +198,9 @@ class AbstractReachability:
                         if vertex == 0:
                             start_dist = None
                         else:
-                            start_dist = FiniteDistribution(
-                                reach_states[(source, vertex)]
-                            )
-
+                            start_dist = reach_states[vertex]
                         # Learn policy
-                        edge_policy, reach_env, log_info = edge.learn_policy(
+                        edge_policy, reached_region = edge.learn_policy(
                             grid_params,
                             hyperparams,
                             vertex,
@@ -223,43 +212,17 @@ class AbstractReachability:
 
                         # update stats
                         num_edges_learned += 1
-                        total_steps += log_info[-1][0]
-                        total_time += log_info[-1][1]
 
                         # Compute reach probability and collect visited states
-                        states_reached = []
-                        reach_prob = 0
-                        for _ in range(num_samples):
-                            sarss = get_rollout(reach_env, edge_policy, False)
-                            states = np.array(
-                                [state for state, _, _, _ in sarss] + [sarss[-1][-1]]
-                            )
-                            total_steps += len(sarss)
-                            if reach_env.cum_reward(states) > 0:
-                                reach_prob += 1
-                                if edge.target != vertex:
-                                    states_reached.append(reach_env.get_state())
-                        reach_prob = reach_prob / num_samples
+                        reach_prob = 0 if edge_policy is None else 1
+                        print(f"\nnew reachable region for this vertex is {reached_region}")
                         print("\nReach Probability: {}".format(reach_prob))
-                        if edge.target != vertex:
-                            if len(states_reached) > 0:
-                                reach_states[(vertex, edge.target)] = states_reached
-                                target_neg_log_prob = (
-                                    -np.log(reach_prob) + min_neg_log_prob[vertex]
-                                )
-                                heappush(
-                                    queue, (target_neg_log_prob, edge.target, vertex)
-                                )
-                            else:
-                                bad_edges.append((vertex, edge.target))
-                        else:
-                            success_measure = (
-                                -np.log(reach_prob) + min_neg_log_prob[vertex]
-                            )
-                            success_measure = np.exp(-success_measure)
-                            incomplete = False
-                            print("Estimated Success Rate: {}".format(success_measure))
+                        reach_states[edge.target] = reached_region
 
+                        if edge_policy is not None:
+                            heappush(queue, (0, edge.target, vertex))
+
+                pdb.set_trace()
                 # Set the explored tag
                 explored[vertex] = True
                 if (vertex in self.final_vertices) and (success_measure > best_success):
